@@ -550,7 +550,7 @@ class Search(Request):
         d.update(kwargs)
         return d
 
-    def count(self):
+    async def count(self):
         """
         Return the number of hits matching the query and filters. Note that
         only the actual number is returned.
@@ -562,14 +562,14 @@ class Search(Request):
 
         d = self.to_dict(count=True)
         # TODO: failed shards detection
-        return es.count(
+        return await es.count(
             index=self._index,
             doc_type=self._doc_type,
             body=d,
             **self._params
         )['count']
 
-    def execute(self, ignore_cache=False):
+    async def execute(self, ignore_cache=False):
         """
         Execute the search and return an instance of ``Response`` wrapping all
         the data.
@@ -581,7 +581,7 @@ class Search(Request):
 
             self._response = self._response_class(
                 self,
-                es.search(
+                await es.search(
                     index=self._index,
                     doc_type=self._doc_type,
                     body=self.to_dict(),
@@ -590,14 +590,14 @@ class Search(Request):
             )
         return self._response
 
-    def execute_suggest(self):
+    async def execute_suggest(self):
         """
         Execute just the suggesters. Ignores all parts of the request that are
         not relevant, including ``query`` and ``doc_type``.
         """
         es = connections.get_connection(self._using)
         return SuggestResponse(
-            es.suggest(
+            await es.suggest(
                 index=self._index,
                 body=self._suggest,
                 **self._params
@@ -675,14 +675,14 @@ class MultiSearch(Request):
 
         return out
 
-    def execute(self, ignore_cache=False, raise_on_error=True):
+    async def execute(self, ignore_cache=False, raise_on_error=True):
         """
         Execute the multi search request and return a list of search results.
         """
         if ignore_cache or not hasattr(self, '_response'):
             es = connections.get_connection(self._using)
 
-            responses = es.msearch(
+            responses = await es.msearch(
                 index=self._index,
                 doc_type=self._doc_type,
                 body=self.to_dict(),

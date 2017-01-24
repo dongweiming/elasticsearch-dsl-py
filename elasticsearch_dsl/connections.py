@@ -1,6 +1,6 @@
 from six import string_types
 
-from elasticsearch import Elasticsearch
+from elasticsearch_async import AsyncElasticsearch
 
 from .serializer import serializer
 
@@ -63,7 +63,7 @@ class Connections(object):
         it under given alias.
         """
         kwargs.setdefault('serializer', serializer)
-        conn = self._conns[alias] = Elasticsearch(**kwargs)
+        conn = self._conns[alias] = AsyncElasticsearch(**kwargs)
         return conn
 
     def get_connection(self, alias='default'):

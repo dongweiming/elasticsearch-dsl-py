@@ -49,7 +49,7 @@ class Mapping(object):
                 return
         return field
 
-    def _collect_analysis(self):
+    def _collect_analysis(self, include_custom_analysis=False):
         analysis = {}
         fields = []
         if '_all' in self._meta:
@@ -65,6 +65,11 @@ class Mapping(object):
                 if not d:
                     continue
 
+                if not include_custom_analysis and 'analyzer' in d.keys():
+                    for k, v in d['analyzer'].items():
+                        if v['type'] == 'custom':
+                            md = {}
+
                 # merge the definition
                 # TODO: conflict detection/resolution
                 for key in d:
@@ -72,20 +77,21 @@ class Mapping(object):
 
         return analysis
 
-    def save(self, index, using='default'):
+    async def save(self, index, using='default'):
         # TODO: replace with creating an Index instance to avoid duplication
         es = connections.get_connection(using)
-        if not es.indices.exists(index=index):
-            es.indices.create(index=index, body={'mappings': self.to_dict(), 'settings': {'analysis': self._collect_analysis()}})
+        if not await es.indices.exists(index=index):
+            await es.indices.create(index=index, body={'mappings': self.to_dict(), 'settings': {'analysis': self._collect_analysis(True)}})
         else:
             analysis = self._collect_analysis()
             if analysis:
-                if es.cluster.state(index=index, metric='metadata')['metadata']['indices'][index]['state'] != 'close':
+                state = await es.cluster.state(index=index, metric='metadata')
+                if state['metadata']['indices'][index]['state'] != 'close':
                     # TODO: check if the analysis config is already there
                     raise IllegalOperation(
                         'You cannot update analysis configuration on an open index, you need to close index %s first.' % index)
-                es.indices.put_settings(index=index, body={'analysis': analysis})
-            es.indices.put_mapping(index=index, doc_type=self.doc_type, body=self.to_dict())
+                await es.indices.put_settings(index=index, body={'analysis': analysis})
+            await es.indices.put_mapping(index=index, doc_type=self.doc_type, body=self.to_dict())
 
     def update_from_es(self, index, using='default'):
         es = connections.get_connection(using)
