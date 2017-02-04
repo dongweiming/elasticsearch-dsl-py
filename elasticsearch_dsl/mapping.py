@@ -49,7 +49,7 @@ class Mapping(object):
                 return
         return field
 
-    def _collect_analysis(self, include_custom_analysis=False):
+    def _collect_analysis(self, include_custom_analysis=True):
         analysis = {}
         fields = []
         if '_all' in self._meta:
@@ -68,7 +68,7 @@ class Mapping(object):
                 if not include_custom_analysis and 'analyzer' in d.keys():
                     for k, v in d['analyzer'].items():
                         if v['type'] == 'custom':
-                            md = {}
+                            d = {}
 
                 # merge the definition
                 # TODO: conflict detection/resolution
@@ -81,9 +81,9 @@ class Mapping(object):
         # TODO: replace with creating an Index instance to avoid duplication
         es = connections.get_connection(using)
         if not await es.indices.exists(index=index):
-            await es.indices.create(index=index, body={'mappings': self.to_dict(), 'settings': {'analysis': self._collect_analysis(True)}})
+            await es.indices.create(index=index, body={'mappings': self.to_dict(), 'settings': {'analysis': self._collect_analysis()}})
         else:
-            analysis = self._collect_analysis()
+            analysis = self._collect_analysis(False)
             if analysis:
                 state = await es.cluster.state(index=index, metric='metadata')
                 if state['metadata']['indices'][index]['state'] != 'close':

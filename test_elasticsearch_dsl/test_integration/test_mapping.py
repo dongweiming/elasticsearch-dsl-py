@@ -39,9 +39,6 @@ def test_mapping_saved_into_es_when_index_already_exists_closed(write_client):
     m.field('name', 'text', analyzer=analysis.analyzer('my_analyzer', tokenizer='keyword'))
     write_client.indices.create(index='test-mapping')
 
-    with raises(exceptions.IllegalOperation):
-        m.save('test-mapping', using=write_client)
-
     write_client.cluster.health(index='test-mapping', wait_for_status='yellow')
     write_client.indices.close(index='test-mapping')
     m.save('test-mapping', using=write_client)
